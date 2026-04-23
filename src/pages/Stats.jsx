@@ -6,7 +6,7 @@ import {
   Tooltip, ResponsiveContainer, Cell,
   PieChart, Pie
 } from 'recharts'
-const API = 'http://localhost:8080/api'
+const API = 'https://habittracker-1-wmm5.onrender.com/api'
 export default function Stats() {
   const navigate = useNavigate()
   const token = localStorage.getItem('token')
