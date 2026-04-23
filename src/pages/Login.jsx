@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import axios from 'axios'
 import { useNavigate } from 'react-router-dom'
-const API = 'http://localhost:8080/api'
+const API = 'https://habittracker-1-wmm5.onrender.com/api'
 export default function Login() {
   const [tab, setTab] = useState('login')
   const [form, setForm] = useState({ name: '', email: '', password: '' })
