@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import axios from 'axios'
 import { useNavigate } from 'react-router-dom'
-const API = 'http://localhost:8080/api'
+const API = 'https://habittracker-1-wmm5.onrender.com/api'
 function formatDuration(mins) {
   if (!mins || mins === 0) return null
   if (mins >= 60) {
