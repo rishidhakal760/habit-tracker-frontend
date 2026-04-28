@@ -440,6 +440,5 @@ useEffect(() => {
           </ResponsiveContainer>
         </div>
       </div>
-    </div>
   )
 }
