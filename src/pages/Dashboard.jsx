@@ -1,7 +1,9 @@
 import { useState, useEffect, useMemo } from 'react'
 import axios from 'axios'
 import { useNavigate } from 'react-router-dom'
+
 const API = 'https://habittracker-1-wmm5.onrender.com/api'
+
 function formatDuration(mins) {
   if (!mins || mins === 0) return null
   if (mins >= 60) {
@@ -36,6 +38,9 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(false)
   const [monthHabits, setMonthHabits] = useState({})
   const [showCalendar, setShowCalendar] = useState(false)
+  const [user, setUser] = useState({ name: '', email: '' })
+  const [showDropdown, setShowDropdown] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
 
   const isToday = (date) => date.toDateString() === today.toDateString()
   const isPast = (date) => date < today && !isToday(date)
@@ -45,6 +50,11 @@ export default function Dashboard() {
     const m = String(date.getMonth() + 1).padStart(2, '0')
     const d = String(date.getDate()).padStart(2, '0')
     return `${y}-${m}-${d}`
+  }
+
+  const getInitials = (name) => {
+    if (!name) return 'U'
+    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
   }
 
   const fetchHabitsForDate = async (date) => {
@@ -79,6 +89,15 @@ export default function Dashboard() {
     }
   }
 
+  const fetchUser = async () => {
+    try {
+      const res = await axios.get(`${API}/habits/user/me`, { headers })
+      setUser(res.data)
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
   useEffect(() => {
     fetchHabitsForDate(selectedDate)
   }, [selectedDate])
@@ -86,6 +105,10 @@ export default function Dashboard() {
   useEffect(() => {
     fetchMonthData()
   }, [habits])
+
+  useEffect(() => {
+    fetchUser()
+  }, [])
 
   const handleDayClick = (date) => {
     if (isFuture(date)) return
@@ -202,7 +225,6 @@ export default function Dashboard() {
 
   const CalendarPanel = () => (
     <div className="p-5">
-      {/* Month nav */}
       <div className="flex items-center justify-between mb-4">
         <span className="text-base font-medium text-white">
           {monthNames[currentMonth]} {currentYear}
@@ -212,15 +234,11 @@ export default function Dashboard() {
           <button onClick={nextMonth} className="w-7 h-7 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-zinc-400 flex items-center justify-center transition-colors text-sm">›</button>
         </div>
       </div>
-
-      {/* Day labels */}
       <div className="grid grid-cols-7 mb-1">
         {dayNames.map((d, i) => (
           <div key={i} className="text-center text-xs text-zinc-500 font-medium py-1.5">{d}</div>
         ))}
       </div>
-
-      {/* Calendar days */}
       <div className="grid grid-cols-7 gap-0.5">
         {calendarDays.map((item, idx) => {
           if (!item.current) {
@@ -237,7 +255,6 @@ export default function Dashboard() {
           const isTodayDay = isToday(date)
           const isFutureDay = isFuture(date)
           const dotColor = getDotColor(dateStr)
-
           return (
             <button
               key={idx}
@@ -256,8 +273,6 @@ export default function Dashboard() {
           )
         })}
       </div>
-
-      {/* Legend */}
       <div className="flex flex-wrap gap-3 mt-4 mb-5">
         {[
           ['bg-emerald-500', 'All done'],
@@ -270,8 +285,6 @@ export default function Dashboard() {
           </div>
         ))}
       </div>
-
-      {/* Mini stats */}
       <div className="grid grid-cols-3 gap-2">
         {[
           { label: 'This week', value: `${last7.reduce((a, b) => a + b.pct, 0) / 7 | 0}%`, sub: 'avg score' },
@@ -292,7 +305,7 @@ export default function Dashboard() {
     <div className="min-h-screen bg-zinc-950 text-white flex flex-col">
 
       {/* Navbar */}
-      <div className="bg-zinc-900 border-b border-zinc-800 px-4 py-3 flex items-center justify-between flex-shrink-0">
+      <div className="bg-zinc-900 border-b border-zinc-800 px-4 py-3 flex items-center justify-between flex-shrink-0 relative z-30">
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 bg-violet-600 rounded-md flex items-center justify-center">
             <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
@@ -304,13 +317,89 @@ export default function Dashboard() {
           </div>
           <span className="text-sm font-medium">HabitTracker</span>
         </div>
+
         <div className="flex items-center gap-4">
           <button onClick={() => navigate('/stats')} className="text-xs text-zinc-500 hover:text-white transition-colors">Stats</button>
-          <button onClick={handleLogout} className="text-xs text-zinc-500 hover:text-white transition-colors">Logout</button>
+
+          {/* Avatar button */}
+          <div className="relative">
+            <button
+              onClick={() => setShowDropdown(!showDropdown)}
+              className="w-8 h-8 rounded-full bg-violet-600 border-2 border-violet-500 flex items-center justify-center text-xs font-medium text-white hover:bg-violet-500 transition-colors"
+            >
+              {getInitials(user.name)}
+            </button>
+
+            {/* Dropdown menu */}
+            {showDropdown && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setShowDropdown(false)} />
+                <div className="absolute right-0 top-10 w-52 bg-zinc-900 border border-zinc-800 rounded-xl shadow-xl z-50 overflow-hidden">
+                  <div className="px-4 py-3 border-b border-zinc-800">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-full bg-violet-600 flex items-center justify-center text-sm font-medium text-white flex-shrink-0">
+                        {getInitials(user.name)}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-sm font-medium text-white truncate">{user.name || 'User'}</div>
+                        <div className="text-xs text-zinc-500 truncate">{user.email || ''}</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="px-4 py-2.5 flex items-center gap-2 border-b border-zinc-800">
+                    <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                    <span className="text-xs text-zinc-400">Online</span>
+                  </div>
+                  <button
+                    onClick={() => { setShowDropdown(false); setShowConfirm(true) }}
+                    className="w-full px-4 py-2.5 flex items-center gap-2 text-red-400 hover:bg-zinc-800 transition-colors"
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
+                      <polyline points="16 17 21 12 16 7"/>
+                      <line x1="21" y1="12" x2="9" y2="12"/>
+                    </svg>
+                    <span className="text-xs">Logout</span>
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Mobile date bar — shows selected date + calendar toggle */}
+      {/* Logout confirmation modal */}
+      {showConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 px-4">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 w-full max-w-xs text-center">
+            <div className="w-10 h-10 bg-red-950 rounded-full flex items-center justify-center mx-auto mb-3">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2">
+                <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
+                <polyline points="16 17 21 12 16 7"/>
+                <line x1="21" y1="12" x2="9" y2="12"/>
+              </svg>
+            </div>
+            <h3 className="text-sm font-medium text-white mb-1">Sign out?</h3>
+            <p className="text-xs text-zinc-500 mb-5">You'll need to log back in to access your habits.</p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowConfirm(false)}
+                className="flex-1 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleLogout}
+                className="flex-1 py-2 rounded-lg bg-red-500 hover:bg-red-400 text-white text-xs font-medium transition-colors"
+              >
+                Sign out
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mobile date bar */}
       <div className="lg:hidden border-b border-zinc-800 px-4 py-3 flex items-center justify-between bg-zinc-900">
         <div>
           <div className="text-sm font-medium text-white">{selectedLabel}</div>
@@ -341,7 +430,7 @@ export default function Dashboard() {
       {/* Main body */}
       <div className="flex flex-1 overflow-hidden">
 
-        {/* Left — Calendar panel (desktop only) */}
+        {/* Left — Calendar panel desktop */}
         <div className="hidden lg:block w-80 flex-shrink-0 border-r border-zinc-800 overflow-y-auto">
           <CalendarPanel />
         </div>
@@ -349,7 +438,7 @@ export default function Dashboard() {
         {/* Right — Day detail panel */}
         <div className="flex-1 flex flex-col overflow-hidden">
 
-          {/* Day header — desktop only */}
+          {/* Day header desktop */}
           <div className="hidden lg:block px-6 py-4 border-b border-zinc-800 flex-shrink-0">
             <div className="flex items-start justify-between mb-4">
               <div>
@@ -494,7 +583,6 @@ export default function Dashboard() {
                         </svg>
                       )}
                     </button>
-
                     <div className="flex-1 min-w-0">
                       <p className={`text-sm font-medium truncate ${habit.completed ? 'line-through text-zinc-500' : 'text-white'}`}>
                         {habit.name}
@@ -503,19 +591,15 @@ export default function Dashboard() {
                         <p className="text-xs text-zinc-600 mt-0.5 truncate">{habit.description}</p>
                       )}
                     </div>
-
                     {habit.durationMinutes > 0 && (
                       <span className="text-xs text-zinc-500 flex-shrink-0">{formatDuration(habit.durationMinutes)}</span>
                     )}
-
                     {habit.streak > 0 && (
                       <span className="text-xs font-medium text-amber-500 flex-shrink-0">{habit.streak}d</span>
                     )}
-
                     {isPast(selectedDate) && !habit.completed && (
                       <span className="text-xs text-red-500 flex-shrink-0">missed</span>
                     )}
-
                     {isToday(selectedDate) && (
                       <button onClick={() => handleDelete(habit.id)} className="text-zinc-700 hover:text-red-400 transition-colors flex-shrink-0">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
