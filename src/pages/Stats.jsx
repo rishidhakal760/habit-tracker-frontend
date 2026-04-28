@@ -6,30 +6,38 @@ import {
   Tooltip, ResponsiveContainer, Cell,
   PieChart, Pie
 } from 'recharts'
+
 const API = 'https://habittracker-1-wmm5.onrender.com/api'
+
 export default function Stats() {
+  const navigate = useNavigate()
+  const token = localStorage.getItem('token')
+  const headers = useMemo(() => ({ Authorization: `Bearer ${token}` }), [token])
 
   const [user, setUser] = useState({ name: '', email: '' })
   const [showDropdown, setShowDropdown] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
-
-  const token = localStorage.getItem('token')
-  const headers = useMemo(() => ({ Authorization: `Bearer ${token}` }), [token])
-
   const [completionRate, setCompletionRate] = useState(0)
   const [allHabits, setAllHabits] = useState([])
   const [loading, setLoading] = useState(true)
   const [chartTab, setChartTab] = useState('weekly')
 
+  const getInitials = (name) => {
+    if (!name) return 'U'
+    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+  }
+
   useEffect(() => {
     const fetchAll = async () => {
       try {
-        const [rateRes, allRes] = await Promise.all([
+        const [rateRes, allRes, userRes] = await Promise.all([
           axios.get(`${API}/habits/stats/completion`, { headers }),
           axios.get(`${API}/habits`, { headers }),
+          axios.get(`${API}/habits/user/me`, { headers }),
         ])
         setCompletionRate(Math.round(rateRes.data))
         setAllHabits(allRes.data)
+        setUser(userRes.data)
       } catch (err) {
         if (err.response?.status === 401) {
           localStorage.removeItem('token')
@@ -49,7 +57,6 @@ export default function Stats() {
     return `${y}-${m}-${d}`
   }
 
-  // Group all habits by date
   const habitsByDate = useMemo(() => {
     const grouped = {}
     allHabits.forEach(h => {
@@ -61,7 +68,6 @@ export default function Stats() {
     return grouped
   }, [allHabits])
 
-  // Weekly chart data — last 7 days
   const weeklyData = useMemo(() => {
     const data = []
     for (let i = 6; i >= 0; i--) {
@@ -78,7 +84,6 @@ export default function Stats() {
     return data
   }, [habitsByDate])
 
-  // Monthly chart data — last 30 days grouped by week
   const monthlyData = useMemo(() => {
     const weeks = []
     for (let w = 3; w >= 0; w--) {
@@ -102,7 +107,6 @@ export default function Stats() {
     return weeks
   }, [habitsByDate])
 
-  // Yearly chart data — last 12 months
   const yearlyData = useMemo(() => {
     const months = []
     for (let m = 11; m >= 0; m--) {
@@ -130,7 +134,6 @@ export default function Stats() {
     : chartTab === 'monthly' ? monthlyData
     : yearlyData
 
-  // Sparkline for each habit — last 7 days
   const getSparkline = (habitName) => {
     const sparks = []
     for (let i = 6; i >= 0; i--) {
@@ -143,7 +146,6 @@ export default function Stats() {
     return sparks
   }
 
-  // Top habits by streak
   const uniqueHabitNames = [...new Set(allHabits.map(h => h.name))]
   const topStreaks = uniqueHabitNames.map(name => {
     const latest = allHabits
@@ -165,21 +167,6 @@ export default function Stats() {
     localStorage.removeItem('token')
     navigate('/')
   }
-const getInitials = (name) => {
-  if (!name) return 'U'
-  return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
-}
-useEffect(() => {
-  const fetchUser = async () => {
-    try {
-      const res = await axios.get(`${API}/habits/user/me`, { headers })
-      setUser(res.data)
-    } catch (err) {
-      console.error(err)
-    }
-  }
-  fetchUser()
-}, [])
 
   if (loading) {
     return (
@@ -193,7 +180,6 @@ useEffect(() => {
     <div className="min-h-screen bg-zinc-950 text-white flex flex-col">
 
       {/* Navbar */}
-      {/* Navbar */}
       <div className="bg-zinc-900 border-b border-zinc-800 px-5 py-3 flex items-center justify-between flex-shrink-0 relative z-30">
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 bg-violet-600 rounded-md flex items-center justify-center">
@@ -206,6 +192,7 @@ useEffect(() => {
           </div>
           <span className="text-sm font-medium">HabitTracker</span>
         </div>
+
         <div className="flex items-center gap-4">
           <button onClick={() => navigate('/dashboard')} className="text-xs text-zinc-500 hover:text-white transition-colors">Dashboard</button>
 
@@ -275,6 +262,12 @@ useEffect(() => {
         </div>
       )}
 
+      <div className="max-w-4xl mx-auto w-full px-6 py-8">
+        <div className="mb-8">
+          <h1 className="text-xl font-medium text-white">Your stats</h1>
+          <p className="text-xs text-zinc-500 mt-1">Overview of your habit performance</p>
+        </div>
+
         {/* Summary cards */}
         <div className="grid grid-cols-4 gap-3 mb-8">
           {[
@@ -291,7 +284,6 @@ useEffect(() => {
         </div>
 
         <div className="grid grid-cols-2 gap-6 mb-6">
-
           {/* Pie chart */}
           <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
             <div className="text-sm font-medium text-white mb-1">Completion rate</div>
@@ -299,17 +291,7 @@ useEffect(() => {
             <div className="flex items-center gap-6">
               <ResponsiveContainer width={140} height={140}>
                 <PieChart>
-                  <Pie
-                    data={pieData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={45}
-                    outerRadius={65}
-                    startAngle={90}
-                    endAngle={-270}
-                    dataKey="value"
-                    strokeWidth={0}
-                  >
+                  <Pie data={pieData} cx="50%" cy="50%" innerRadius={45} outerRadius={65} startAngle={90} endAngle={-270} dataKey="value" strokeWidth={0}>
                     <Cell fill="#7c3aed"/>
                     <Cell fill="#27272a"/>
                   </Pie>
@@ -330,7 +312,7 @@ useEffect(() => {
             </div>
           </div>
 
-          {/* Top streaks with sparklines */}
+          {/* Top streaks */}
           <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
             <div className="text-sm font-medium text-white mb-1">Top streaks</div>
             <div className="text-xs text-zinc-500 mb-4">Consistency over last 7 days</div>
@@ -342,27 +324,17 @@ useEffect(() => {
                   const sparks = getSparkline(h.name)
                   return (
                     <div key={h.name} className="flex items-center gap-3">
-                      {/* Rank */}
-                      <div className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0
-                        ${i === 0 ? 'bg-amber-950 text-amber-400' : 'bg-zinc-800 text-zinc-500'}
-                      `}>
+                      <div className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0 ${i === 0 ? 'bg-amber-950 text-amber-400' : 'bg-zinc-800 text-zinc-500'}`}>
                         {i + 1}
                       </div>
-
-                      {/* Name + sparkline */}
                       <div className="flex-1 min-w-0">
                         <div className="text-xs text-zinc-300 truncate mb-1.5">{h.name}</div>
                         <div className="flex gap-0.5">
                           {sparks.map((done, si) => (
-                            <div
-                              key={si}
-                              className={`w-4 h-4 rounded-sm ${done ? 'bg-emerald-500' : 'bg-zinc-800'}`}
-                            />
+                            <div key={si} className={`w-4 h-4 rounded-sm ${done ? 'bg-emerald-500' : 'bg-zinc-800'}`} />
                           ))}
                         </div>
                       </div>
-
-                      {/* Streak count */}
                       <div className="flex flex-col items-center flex-shrink-0">
                         <span className="text-sm">🔥</span>
                         <span className="text-base font-medium text-amber-400 leading-none mt-0.5">{h.streak}</span>
@@ -376,69 +348,45 @@ useEffect(() => {
           </div>
         </div>
 
-        {/* Bar chart with tabs */}
+        {/* Bar chart */}
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
           <div className="flex items-start justify-between mb-4">
             <div>
               <div className="text-sm font-medium text-white mb-1">Performance</div>
               <div className="text-xs text-zinc-500">Completion % by period</div>
             </div>
-            {/* Tab switcher */}
             <div className="flex bg-zinc-950 border border-zinc-800 rounded-lg p-0.5 gap-0.5">
               {['weekly', 'monthly', 'yearly'].map(tab => (
                 <button
                   key={tab}
                   onClick={() => setChartTab(tab)}
-                  className={`text-xs px-3 py-1.5 rounded-md transition-colors capitalize
-                    ${chartTab === tab
-                      ? 'bg-zinc-800 text-white'
-                      : 'text-zinc-500 hover:text-zinc-300'}
-                  `}
+                  className={`text-xs px-3 py-1.5 rounded-md transition-colors capitalize ${chartTab === tab ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
                 >
                   {tab}
                 </button>
               ))}
             </div>
           </div>
-
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={chartData} barSize={chartTab === 'yearly' ? 24 : 32}>
               <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false}/>
-              <XAxis
-                dataKey="label"
-                tick={{ fill: '#52525b', fontSize: 11 }}
-                axisLine={false}
-                tickLine={false}
-              />
-              <YAxis
-                domain={[0, 100]}
-                tick={{ fill: '#52525b', fontSize: 11 }}
-                axisLine={false}
-                tickLine={false}
-                tickFormatter={v => `${v}%`}
-              />
+              <XAxis dataKey="label" tick={{ fill: '#52525b', fontSize: 11 }} axisLine={false} tickLine={false}/>
+              <YAxis domain={[0, 100]} tick={{ fill: '#52525b', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `${v}%`}/>
               <Tooltip
-                contentStyle={{
-                  background: '#18181b',
-                  border: '0.5px solid #3f3f46',
-                  borderRadius: 8,
-                  fontSize: 12
-                }}
+                contentStyle={{ background: '#18181b', border: '0.5px solid #3f3f46', borderRadius: 8, fontSize: 12 }}
                 labelStyle={{ color: '#a1a1aa' }}
                 formatter={(value) => [`${value}%`, 'Completion']}
                 cursor={{ fill: '#27272a' }}
               />
               <Bar dataKey="pct" radius={[4, 4, 0, 0]}>
                 {chartData.map((entry, i) => (
-                  <Cell
-                    key={i}
-                    fill={entry.isToday ? '#7c3aed' : entry.pct === 100 ? '#10b981' : entry.pct > 0 ? '#7c3aed99' : '#27272a'}
-                  />
+                  <Cell key={i} fill={entry.isToday ? '#7c3aed' : entry.pct === 100 ? '#10b981' : entry.pct > 0 ? '#7c3aed99' : '#27272a'}/>
                 ))}
               </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>
       </div>
+    </div>
   )
 }
