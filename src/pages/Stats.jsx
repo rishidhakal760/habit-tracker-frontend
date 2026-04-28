@@ -8,7 +8,11 @@ import {
 } from 'recharts'
 const API = 'https://habittracker-1-wmm5.onrender.com/api'
 export default function Stats() {
-  const navigate = useNavigate()
+
+  const [user, setUser] = useState({ name: '', email: '' })
+  const [showDropdown, setShowDropdown] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
+
   const token = localStorage.getItem('token')
   const headers = useMemo(() => ({ Authorization: `Bearer ${token}` }), [token])
 
@@ -161,6 +165,21 @@ export default function Stats() {
     localStorage.removeItem('token')
     navigate('/')
   }
+const getInitials = (name) => {
+  if (!name) return 'U'
+  return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+}
+useEffect(() => {
+  const fetchUser = async () => {
+    try {
+      const res = await axios.get(`${API}/habits/user/me`, { headers })
+      setUser(res.data)
+    } catch (err) {
+      console.error(err)
+    }
+  }
+  fetchUser()
+}, [])
 
   if (loading) {
     return (
@@ -174,7 +193,8 @@ export default function Stats() {
     <div className="min-h-screen bg-zinc-950 text-white flex flex-col">
 
       {/* Navbar */}
-      <div className="bg-zinc-900 border-b border-zinc-800 px-5 py-3 flex items-center justify-between flex-shrink-0">
+      {/* Navbar */}
+      <div className="bg-zinc-900 border-b border-zinc-800 px-5 py-3 flex items-center justify-between flex-shrink-0 relative z-30">
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 bg-violet-600 rounded-md flex items-center justify-center">
             <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
@@ -186,18 +206,74 @@ export default function Stats() {
           </div>
           <span className="text-sm font-medium">HabitTracker</span>
         </div>
-        <div className="flex items-center gap-5">
+        <div className="flex items-center gap-4">
           <button onClick={() => navigate('/dashboard')} className="text-xs text-zinc-500 hover:text-white transition-colors">Dashboard</button>
-          <button onClick={handleLogout} className="text-xs text-zinc-500 hover:text-white transition-colors">Logout</button>
+
+          <div className="relative">
+            <button
+              onClick={() => setShowDropdown(!showDropdown)}
+              className="w-8 h-8 rounded-full bg-violet-600 border-2 border-violet-500 flex items-center justify-center text-xs font-medium text-white hover:bg-violet-500 transition-colors"
+            >
+              {getInitials(user.name)}
+            </button>
+
+            {showDropdown && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setShowDropdown(false)} />
+                <div className="absolute right-0 top-10 w-52 bg-zinc-900 border border-zinc-800 rounded-xl shadow-xl z-50 overflow-hidden">
+                  <div className="px-4 py-3 border-b border-zinc-800">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-full bg-violet-600 flex items-center justify-center text-sm font-medium text-white flex-shrink-0">
+                        {getInitials(user.name)}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-sm font-medium text-white truncate">{user.name || 'User'}</div>
+                        <div className="text-xs text-zinc-500 truncate">{user.email || ''}</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="px-4 py-2.5 flex items-center gap-2 border-b border-zinc-800">
+                    <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                    <span className="text-xs text-zinc-400">Online</span>
+                  </div>
+                  <button
+                    onClick={() => { setShowDropdown(false); setShowConfirm(true) }}
+                    className="w-full px-4 py-2.5 flex items-center gap-2 text-red-400 hover:bg-zinc-800 transition-colors"
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
+                      <polyline points="16 17 21 12 16 7"/>
+                      <line x1="21" y1="12" x2="9" y2="12"/>
+                    </svg>
+                    <span className="text-xs">Logout</span>
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto w-full px-6 py-8">
-
-        <div className="mb-8">
-          <h1 className="text-xl font-medium text-white">Your stats</h1>
-          <p className="text-xs text-zinc-500 mt-1">Overview of your habit performance</p>
+      {/* Logout confirmation */}
+      {showConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 px-4">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 w-full max-w-xs text-center">
+            <div className="w-10 h-10 bg-red-950 rounded-full flex items-center justify-center mx-auto mb-3">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2">
+                <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
+                <polyline points="16 17 21 12 16 7"/>
+                <line x1="21" y1="12" x2="9" y2="12"/>
+              </svg>
+            </div>
+            <h3 className="text-sm font-medium text-white mb-1">Sign out?</h3>
+            <p className="text-xs text-zinc-500 mb-5">You'll need to log back in to access your habits.</p>
+            <div className="flex gap-2">
+              <button onClick={() => setShowConfirm(false)} className="flex-1 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs transition-colors">Cancel</button>
+              <button onClick={handleLogout} className="flex-1 py-2 rounded-lg bg-red-500 hover:bg-red-400 text-white text-xs font-medium transition-colors">Sign out</button>
+            </div>
+          </div>
         </div>
+      )}
 
         {/* Summary cards */}
         <div className="grid grid-cols-4 gap-3 mb-8">
