@@ -34,6 +34,7 @@ export default function Dashboard() {
   const [habits, setHabits] = useState([])
   const [showForm, setShowForm] = useState(false)
   const [newHabit, setNewHabit] = useState({ name: '', description: '', durationMinutes: '' })
+  const [editingHabit, setEditingHabit] = useState(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [monthHabits, setMonthHabits] = useState({})
@@ -156,6 +157,20 @@ export default function Dashboard() {
       setError('Failed to create habit')
     }
   }
+const handleUpdate = async () => {
+  if (!editingHabit.name.trim()) return
+  try {
+    const res = await axios.put(`${API}/habits/${editingHabit.id}`, {
+      name: editingHabit.name,
+      description: editingHabit.description,
+      durationMinutes: parseInt(editingHabit.durationMinutes) || 0,
+    }, { headers })
+    setHabits(habits.map(h => h.id === editingHabit.id ? res.data : h))
+    setEditingHabit(null)
+  } catch (err) {
+    console.error(err)
+  }
+}
 
   const handleLogout = () => {
     localStorage.removeItem('token')
@@ -561,6 +576,137 @@ export default function Dashboard() {
             ) : (
               <div className="space-y-2.5">
                 {habits.map(habit => (
+                    <div className="space-y-2.5">
+                      {habits.map(habit => (
+                        editingHabit?.id === habit.id ? (
+                          // Edit form
+                          <div key={habit.id} className="px-4 py-3.5 rounded-xl border border-violet-700 bg-zinc-900">
+                            <div className="text-xs font-medium text-zinc-400 mb-2.5">Edit habit</div>
+                            <div className="flex flex-col gap-2">
+                              <input
+                                type="text"
+                                value={editingHabit.name}
+                                onChange={e => setEditingHabit({ ...editingHabit, name: e.target.value })}
+                                className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-violet-500"
+                              />
+                              <input
+                                type="text"
+                                placeholder="Description (optional)"
+                                value={editingHabit.description || ''}
+                                onChange={e => setEditingHabit({ ...editingHabit, description: e.target.value })}
+                                className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-violet-500"
+                              />
+                              <div className="relative">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  placeholder="Duration in minutes"
+                                  value={editingHabit.durationMinutes || ''}
+                                  onChange={e => setEditingHabit({ ...editingHabit, durationMinutes: e.target.value })}
+                                  className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-violet-500"
+                                />
+                                {editingHabit.durationMinutes > 0 && (
+                                  <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-violet-400">
+                                    {formatDuration(parseInt(editingHabit.durationMinutes))}
+                                  </div>
+                                )}
+                              </div>
+                              <div className="flex gap-2 mt-1">
+                                <button
+                                  onClick={handleUpdate}
+                                  className="bg-violet-600 hover:bg-violet-500 text-white text-xs font-medium px-4 py-1.5 rounded-lg transition-colors"
+                                >
+                                  Save
+                                </button>
+                                <button
+                                  onClick={() => setEditingHabit(null)}
+                                  className="text-zinc-500 hover:text-white text-xs px-4 py-1.5 rounded-lg transition-colors"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          // Normal habit row
+                          <div
+                            key={habit.id}
+                            className={`flex items-center gap-3 px-4 py-3.5 rounded-xl border transition-colors
+                              ${habit.completed ? 'bg-zinc-900 border-emerald-900'
+                                : isPast(selectedDate) && !habit.completed ? 'bg-zinc-900 border-red-900 opacity-60'
+                                : 'bg-zinc-900 border-zinc-800'}
+                            `}
+                          >
+                            <button
+                              onClick={() => handleToggle(habit.id)}
+                              disabled={!isToday(selectedDate)}
+                              className={`w-6 h-6 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-colors
+                                ${habit.completed ? 'bg-emerald-500 border-emerald-500' : 'border-zinc-600'}
+                                ${isToday(selectedDate) && !habit.completed ? 'hover:border-violet-500 cursor-pointer' : 'cursor-default'}
+                              `}
+                            >
+                              {habit.completed && (
+                                <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                                  <path d="M2 5l2.5 2.5L8 3" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
+                                </svg>
+                              )}
+                            </button>
+
+                            <div className="flex-1 min-w-0">
+                              <p className={`text-sm font-medium truncate ${habit.completed ? 'line-through text-zinc-500' : 'text-white'}`}>
+                                {habit.name}
+                              </p>
+                              {habit.description && (
+                                <p className="text-xs text-zinc-600 mt-0.5 truncate">{habit.description}</p>
+                              )}
+                            </div>
+
+                            {habit.durationMinutes > 0 && (
+                              <span className="text-xs text-zinc-500 flex-shrink-0">{formatDuration(habit.durationMinutes)}</span>
+                            )}
+
+                            {habit.streak > 0 && (
+                              <span className="text-xs font-medium text-amber-500 flex-shrink-0">{habit.streak}d</span>
+                            )}
+
+                            {isPast(selectedDate) && !habit.completed && (
+                              <span className="text-xs text-red-500 flex-shrink-0">missed</span>
+                            )}
+
+                            {isToday(selectedDate) && (
+                              <div className="flex items-center gap-1.5 flex-shrink-0">
+                                {/* Edit button */}
+                                <button
+                                  onClick={() => setEditingHabit({
+                                    id: habit.id,
+                                    name: habit.name,
+                                    description: habit.description || '',
+                                    durationMinutes: habit.durationMinutes || '',
+                                  })}
+                                  className="text-zinc-600 hover:text-violet-400 transition-colors"
+                                >
+                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+                                    <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                  </svg>
+                                </button>
+                                {/* Delete button */}
+                                <button
+                                  onClick={() => handleDelete(habit.id)}
+                                  className="text-zinc-700 hover:text-red-400 transition-colors"
+                                >
+                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <polyline points="3 6 5 6 21 6"/>
+                                    <path d="M19 6l-1 14H6L5 6"/>
+                                    <path d="M10 11v6M14 11v6"/>
+                                  </svg>
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        )
+                      ))}
+                    </div>
                   <div
                     key={habit.id}
                     className={`flex items-center gap-3 px-4 py-3.5 rounded-xl border transition-colors
