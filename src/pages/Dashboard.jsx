@@ -34,7 +34,6 @@ export default function Dashboard() {
   const [habits, setHabits] = useState([])
   const [showForm, setShowForm] = useState(false)
   const [newHabit, setNewHabit] = useState({ name: '', description: '', durationMinutes: '' })
-  const [editingHabit, setEditingHabit] = useState(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [monthHabits, setMonthHabits] = useState({})
@@ -42,6 +41,7 @@ export default function Dashboard() {
   const [user, setUser] = useState({ name: '', email: '' })
   const [showDropdown, setShowDropdown] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
+  const [editingHabit, setEditingHabit] = useState(null)
 
   const isToday = (date) => date.toDateString() === today.toDateString()
   const isPast = (date) => date < today && !isToday(date)
@@ -116,6 +116,7 @@ export default function Dashboard() {
     setSelectedDate(date)
     setShowForm(false)
     setShowCalendar(false)
+    setEditingHabit(null)
   }
 
   const handleToggle = async (id) => {
@@ -157,20 +158,21 @@ export default function Dashboard() {
       setError('Failed to create habit')
     }
   }
-const handleUpdate = async () => {
-  if (!editingHabit.name.trim()) return
-  try {
-    const res = await axios.put(`${API}/habits/${editingHabit.id}`, {
-      name: editingHabit.name,
-      description: editingHabit.description,
-      durationMinutes: parseInt(editingHabit.durationMinutes) || 0,
-    }, { headers })
-    setHabits(habits.map(h => h.id === editingHabit.id ? res.data : h))
-    setEditingHabit(null)
-  } catch (err) {
-    console.error(err)
+
+  const handleUpdate = async () => {
+    if (!editingHabit.name.trim()) return
+    try {
+      const res = await axios.put(`${API}/habits/${editingHabit.id}`, {
+        name: editingHabit.name,
+        description: editingHabit.description,
+        durationMinutes: parseInt(editingHabit.durationMinutes) || 0,
+      }, { headers })
+      setHabits(habits.map(h => h.id === editingHabit.id ? res.data : h))
+      setEditingHabit(null)
+    } catch (err) {
+      console.error(err)
+    }
   }
-}
 
   const handleLogout = () => {
     localStorage.removeItem('token')
@@ -332,11 +334,8 @@ const handleUpdate = async () => {
           </div>
           <span className="text-sm font-medium">HabitTracker</span>
         </div>
-
         <div className="flex items-center gap-4">
           <button onClick={() => navigate('/stats')} className="text-xs text-zinc-500 hover:text-white transition-colors">Stats</button>
-
-          {/* Avatar button */}
           <div className="relative">
             <button
               onClick={() => setShowDropdown(!showDropdown)}
@@ -344,8 +343,6 @@ const handleUpdate = async () => {
             >
               {getInitials(user.name)}
             </button>
-
-            {/* Dropdown menu */}
             {showDropdown && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setShowDropdown(false)} />
@@ -383,7 +380,7 @@ const handleUpdate = async () => {
         </div>
       </div>
 
-      {/* Logout confirmation modal */}
+      {/* Logout confirmation */}
       {showConfirm && (
         <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 px-4">
           <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 w-full max-w-xs text-center">
@@ -397,18 +394,8 @@ const handleUpdate = async () => {
             <h3 className="text-sm font-medium text-white mb-1">Sign out?</h3>
             <p className="text-xs text-zinc-500 mb-5">You'll need to log back in to access your habits.</p>
             <div className="flex gap-2">
-              <button
-                onClick={() => setShowConfirm(false)}
-                className="flex-1 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleLogout}
-                className="flex-1 py-2 rounded-lg bg-red-500 hover:bg-red-400 text-white text-xs font-medium transition-colors"
-              >
-                Sign out
-              </button>
+              <button onClick={() => setShowConfirm(false)} className="flex-1 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs transition-colors">Cancel</button>
+              <button onClick={handleLogout} className="flex-1 py-2 rounded-lg bg-red-500 hover:bg-red-400 text-white text-xs font-medium transition-colors">Sign out</button>
             </div>
           </div>
         </div>
@@ -435,7 +422,7 @@ const handleUpdate = async () => {
         </button>
       </div>
 
-      {/* Mobile calendar dropdown */}
+      {/* Mobile calendar */}
       {showCalendar && (
         <div className="lg:hidden border-b border-zinc-800 bg-zinc-950">
           <CalendarPanel />
@@ -445,12 +432,12 @@ const handleUpdate = async () => {
       {/* Main body */}
       <div className="flex flex-1 overflow-hidden">
 
-        {/* Left — Calendar panel desktop */}
+        {/* Left calendar desktop */}
         <div className="hidden lg:block w-80 flex-shrink-0 border-r border-zinc-800 overflow-y-auto">
           <CalendarPanel />
         </div>
 
-        {/* Right — Day detail panel */}
+        {/* Right panel */}
         <div className="flex-1 flex flex-col overflow-hidden">
 
           {/* Day header desktop */}
@@ -488,7 +475,7 @@ const handleUpdate = async () => {
             </div>
           </div>
 
-          {/* Mobile score bar */}
+          {/* Mobile score */}
           <div className="lg:hidden px-4 py-3 border-b border-zinc-800 flex-shrink-0">
             <div className="grid grid-cols-3 gap-2 mb-2">
               {[
@@ -576,192 +563,137 @@ const handleUpdate = async () => {
             ) : (
               <div className="space-y-2.5">
                 {habits.map(habit => (
-                    <div className="space-y-2.5">
-                      {habits.map(habit => (
-                        editingHabit?.id === habit.id ? (
-                          // Edit form
-                          <div key={habit.id} className="px-4 py-3.5 rounded-xl border border-violet-700 bg-zinc-900">
-                            <div className="text-xs font-medium text-zinc-400 mb-2.5">Edit habit</div>
-                            <div className="flex flex-col gap-2">
-                              <input
-                                type="text"
-                                value={editingHabit.name}
-                                onChange={e => setEditingHabit({ ...editingHabit, name: e.target.value })}
-                                className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-violet-500"
-                              />
-                              <input
-                                type="text"
-                                placeholder="Description (optional)"
-                                value={editingHabit.description || ''}
-                                onChange={e => setEditingHabit({ ...editingHabit, description: e.target.value })}
-                                className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-violet-500"
-                              />
-                              <div className="relative">
-                                <input
-                                  type="number"
-                                  min="0"
-                                  placeholder="Duration in minutes"
-                                  value={editingHabit.durationMinutes || ''}
-                                  onChange={e => setEditingHabit({ ...editingHabit, durationMinutes: e.target.value })}
-                                  className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-violet-500"
-                                />
-                                {editingHabit.durationMinutes > 0 && (
-                                  <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-violet-400">
-                                    {formatDuration(parseInt(editingHabit.durationMinutes))}
-                                  </div>
-                                )}
-                              </div>
-                              <div className="flex gap-2 mt-1">
-                                <button
-                                  onClick={handleUpdate}
-                                  className="bg-violet-600 hover:bg-violet-500 text-white text-xs font-medium px-4 py-1.5 rounded-lg transition-colors"
-                                >
-                                  Save
-                                </button>
-                                <button
-                                  onClick={() => setEditingHabit(null)}
-                                  className="text-zinc-500 hover:text-white text-xs px-4 py-1.5 rounded-lg transition-colors"
-                                >
-                                  Cancel
-                                </button>
-                              </div>
+                  editingHabit?.id === habit.id ? (
+                    // Edit form
+                    <div key={habit.id} className="px-4 py-3.5 rounded-xl border border-violet-700 bg-zinc-900">
+                      <div className="text-xs font-medium text-zinc-400 mb-2.5">Edit habit</div>
+                      <div className="flex flex-col gap-2">
+                        <input
+                          type="text"
+                          value={editingHabit.name}
+                          onChange={e => setEditingHabit({ ...editingHabit, name: e.target.value })}
+                          className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-violet-500"
+                        />
+                        <input
+                          type="text"
+                          placeholder="Description (optional)"
+                          value={editingHabit.description || ''}
+                          onChange={e => setEditingHabit({ ...editingHabit, description: e.target.value })}
+                          className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-violet-500"
+                        />
+                        <div className="relative">
+                          <input
+                            type="number"
+                            min="0"
+                            placeholder="Duration in minutes"
+                            value={editingHabit.durationMinutes || ''}
+                            onChange={e => setEditingHabit({ ...editingHabit, durationMinutes: e.target.value })}
+                            className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-violet-500"
+                          />
+                          {editingHabit.durationMinutes > 0 && (
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-violet-400">
+                              {formatDuration(parseInt(editingHabit.durationMinutes))}
                             </div>
-                          </div>
-                        ) : (
-                          // Normal habit row
-                          <div
-                            key={habit.id}
-                            className={`flex items-center gap-3 px-4 py-3.5 rounded-xl border transition-colors
-                              ${habit.completed ? 'bg-zinc-900 border-emerald-900'
-                                : isPast(selectedDate) && !habit.completed ? 'bg-zinc-900 border-red-900 opacity-60'
-                                : 'bg-zinc-900 border-zinc-800'}
-                            `}
+                          )}
+                        </div>
+                        <div className="flex gap-2 mt-1">
+                          <button
+                            onClick={handleUpdate}
+                            className="bg-violet-600 hover:bg-violet-500 text-white text-xs font-medium px-4 py-1.5 rounded-lg transition-colors"
                           >
-                            <button
-                              onClick={() => handleToggle(habit.id)}
-                              disabled={!isToday(selectedDate)}
-                              className={`w-6 h-6 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-colors
-                                ${habit.completed ? 'bg-emerald-500 border-emerald-500' : 'border-zinc-600'}
-                                ${isToday(selectedDate) && !habit.completed ? 'hover:border-violet-500 cursor-pointer' : 'cursor-default'}
-                              `}
-                            >
-                              {habit.completed && (
-                                <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                                  <path d="M2 5l2.5 2.5L8 3" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
-                                </svg>
-                              )}
-                            </button>
-
-                            <div className="flex-1 min-w-0">
-                              <p className={`text-sm font-medium truncate ${habit.completed ? 'line-through text-zinc-500' : 'text-white'}`}>
-                                {habit.name}
-                              </p>
-                              {habit.description && (
-                                <p className="text-xs text-zinc-600 mt-0.5 truncate">{habit.description}</p>
-                              )}
-                            </div>
-
-                            {habit.durationMinutes > 0 && (
-                              <span className="text-xs text-zinc-500 flex-shrink-0">{formatDuration(habit.durationMinutes)}</span>
-                            )}
-
-                            {habit.streak > 0 && (
-                              <span className="text-xs font-medium text-amber-500 flex-shrink-0">{habit.streak}d</span>
-                            )}
-
-                            {isPast(selectedDate) && !habit.completed && (
-                              <span className="text-xs text-red-500 flex-shrink-0">missed</span>
-                            )}
-
-                            {isToday(selectedDate) && (
-                              <div className="flex items-center gap-1.5 flex-shrink-0">
-                                {/* Edit button */}
-                                <button
-                                  onClick={() => setEditingHabit({
-                                    id: habit.id,
-                                    name: habit.name,
-                                    description: habit.description || '',
-                                    durationMinutes: habit.durationMinutes || '',
-                                  })}
-                                  className="text-zinc-600 hover:text-violet-400 transition-colors"
-                                >
-                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                    <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
-                                    <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                                  </svg>
-                                </button>
-                                {/* Delete button */}
-                                <button
-                                  onClick={() => handleDelete(habit.id)}
-                                  className="text-zinc-700 hover:text-red-400 transition-colors"
-                                >
-                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                    <polyline points="3 6 5 6 21 6"/>
-                                    <path d="M19 6l-1 14H6L5 6"/>
-                                    <path d="M10 11v6M14 11v6"/>
-                                  </svg>
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        )
-                      ))}
+                            Save
+                          </button>
+                          <button
+                            onClick={() => setEditingHabit(null)}
+                            className="text-zinc-500 hover:text-white text-xs px-4 py-1.5 rounded-lg transition-colors"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
                     </div>
-                  <div
-                    key={habit.id}
-                    className={`flex items-center gap-3 px-4 py-3.5 rounded-xl border transition-colors
-                      ${habit.completed ? 'bg-zinc-900 border-emerald-900'
-                        : isPast(selectedDate) && !habit.completed ? 'bg-zinc-900 border-red-900 opacity-60'
-                        : 'bg-zinc-900 border-zinc-800'}
-                    `}
-                  >
-                    <button
-                      onClick={() => handleToggle(habit.id)}
-                      disabled={!isToday(selectedDate)}
-                      className={`w-6 h-6 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-colors
-                        ${habit.completed ? 'bg-emerald-500 border-emerald-500' : 'border-zinc-600'}
-                        ${isToday(selectedDate) && !habit.completed ? 'hover:border-violet-500 cursor-pointer' : 'cursor-default'}
+                  ) : (
+                    // Normal habit row
+                    <div
+                      key={habit.id}
+                      className={`flex items-center gap-3 px-4 py-3.5 rounded-xl border transition-colors
+                        ${habit.completed ? 'bg-zinc-900 border-emerald-900'
+                          : isPast(selectedDate) && !habit.completed ? 'bg-zinc-900 border-red-900 opacity-60'
+                          : 'bg-zinc-900 border-zinc-800'}
                       `}
                     >
-                      {habit.completed && (
-                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                          <path d="M2 5l2.5 2.5L8 3" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
-                        </svg>
+                      <button
+                        onClick={() => handleToggle(habit.id)}
+                        disabled={!isToday(selectedDate)}
+                        className={`w-6 h-6 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-colors
+                          ${habit.completed ? 'bg-emerald-500 border-emerald-500' : 'border-zinc-600'}
+                          ${isToday(selectedDate) && !habit.completed ? 'hover:border-violet-500 cursor-pointer' : 'cursor-default'}
+                        `}
+                      >
+                        {habit.completed && (
+                          <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                            <path d="M2 5l2.5 2.5L8 3" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
+                          </svg>
+                        )}
+                      </button>
+
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm font-medium truncate ${habit.completed ? 'line-through text-zinc-500' : 'text-white'}`}>
+                          {habit.name}
+                        </p>
+                        {habit.description && (
+                          <p className="text-xs text-zinc-600 mt-0.5 truncate">{habit.description}</p>
+                        )}
+                      </div>
+
+                      {habit.durationMinutes > 0 && (
+                        <span className="text-xs text-zinc-500 flex-shrink-0">{formatDuration(habit.durationMinutes)}</span>
                       )}
-                    </button>
-                    <div className="flex-1 min-w-0">
-                      <p className={`text-sm font-medium truncate ${habit.completed ? 'line-through text-zinc-500' : 'text-white'}`}>
-                        {habit.name}
-                      </p>
-                      {habit.description && (
-                        <p className="text-xs text-zinc-600 mt-0.5 truncate">{habit.description}</p>
+
+                      {habit.streak > 0 && (
+                        <span className="text-xs font-medium text-amber-500 flex-shrink-0">{habit.streak}d</span>
+                      )}
+
+                      {isPast(selectedDate) && !habit.completed && (
+                        <span className="text-xs text-red-500 flex-shrink-0">missed</span>
+                      )}
+
+                      {isToday(selectedDate) && (
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          <button
+                            onClick={() => setEditingHabit({
+                              id: habit.id,
+                              name: habit.name,
+                              description: habit.description || '',
+                              durationMinutes: habit.durationMinutes || '',
+                            })}
+                            className="text-zinc-600 hover:text-violet-400 transition-colors"
+                          >
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+                              <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                            </svg>
+                          </button>
+                          <button
+                            onClick={() => handleDelete(habit.id)}
+                            className="text-zinc-700 hover:text-red-400 transition-colors"
+                          >
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <polyline points="3 6 5 6 21 6"/>
+                              <path d="M19 6l-1 14H6L5 6"/>
+                              <path d="M10 11v6M14 11v6"/>
+                            </svg>
+                          </button>
+                        </div>
                       )}
                     </div>
-                    {habit.durationMinutes > 0 && (
-                      <span className="text-xs text-zinc-500 flex-shrink-0">{formatDuration(habit.durationMinutes)}</span>
-                    )}
-                    {habit.streak > 0 && (
-                      <span className="text-xs font-medium text-amber-500 flex-shrink-0">{habit.streak}d</span>
-                    )}
-                    {isPast(selectedDate) && !habit.completed && (
-                      <span className="text-xs text-red-500 flex-shrink-0">missed</span>
-                    )}
-                    {isToday(selectedDate) && (
-                      <button onClick={() => handleDelete(habit.id)} className="text-zinc-700 hover:text-red-400 transition-colors flex-shrink-0">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <polyline points="3 6 5 6 21 6"/>
-                          <path d="M19 6l-1 14H6L5 6"/>
-                          <path d="M10 11v6M14 11v6"/>
-                        </svg>
-                      </button>
-                    )}
-                  </div>
+                  )
                 ))}
               </div>
             )}
           </div>
 
-          {/* Last 7 days bar chart */}
+          {/* Last 7 days */}
           <div className="px-4 lg:px-6 py-4 border-t border-zinc-800 bg-zinc-900 flex-shrink-0">
             <div className="text-xs text-zinc-600 mb-3">Last 7 days</div>
             <div className="flex items-end gap-1.5 h-10">
