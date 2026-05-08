@@ -43,6 +43,15 @@ export default function Dashboard() {
   const [showConfirm, setShowConfirm] = useState(false)
   const [editingHabit, setEditingHabit] = useState(null)
 
+ const [showChangePassword, setShowChangePassword] = useState(false)
+ const [passwordForm, setPasswordForm] = useState({
+   currentPassword: '',
+   newPassword: '',
+   confirmPassword: ''
+ })
+ const [passwordError, setPasswordError] = useState('')
+ const [passwordSuccess, setPasswordSuccess] = useState('')
+
   const isToday = (date) => date.toDateString() === today.toDateString()
   const isPast = (date) => date < today && !isToday(date)
   const isFuture = (date) => date > today && !isToday(date)
@@ -178,6 +187,41 @@ export default function Dashboard() {
     localStorage.removeItem('token')
     navigate('/')
   }
+const handleChangePassword = async () => {
+  setPasswordError('')
+  setPasswordSuccess('')
+
+  if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
+    setPasswordError('All fields are required')
+    return
+  }
+
+  if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+    setPasswordError('New passwords do not match')
+    return
+  }
+
+  if (passwordForm.newPassword.length < 6) {
+    setPasswordError('New password must be at least 6 characters')
+    return
+  }
+
+  try {
+    await axios.put(`${API}/auth/change-password`, {
+      currentPassword: passwordForm.currentPassword,
+      newPassword: passwordForm.newPassword,
+    }, { headers })
+
+    setPasswordSuccess('Password changed successfully!')
+    setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' })
+    setTimeout(() => {
+      setShowChangePassword(false)
+      setPasswordSuccess('')
+    }, 2000)
+  } catch (err) {
+    setPasswordError(err.response?.data?.message || 'Failed to change password')
+  }
+}
 
   const prevMonth = () => {
     if (currentMonth === 0) { setCurrentMonth(11); setCurrentYear(y => y - 1) }
@@ -363,6 +407,16 @@ export default function Dashboard() {
                     <span className="text-xs text-zinc-400">Online</span>
                   </div>
                   <button
+                    onClick={() => { setShowDropdown(false); setShowChangePassword(true) }}
+                    className="w-full px-4 py-2.5 flex items-center gap-2 text-zinc-400 hover:bg-zinc-800 transition-colors border-b border-zinc-800"
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                      <path d="M7 11V7a5 5 0 0110 0v4"/>
+                    </svg>
+                    <span className="text-xs">Change password</span>
+                  </button>
+                  <button
                     onClick={() => { setShowDropdown(false); setShowConfirm(true) }}
                     className="w-full px-4 py-2.5 flex items-center gap-2 text-red-400 hover:bg-zinc-800 transition-colors"
                   >
@@ -400,6 +454,87 @@ export default function Dashboard() {
           </div>
         </div>
       )}
+
+  {showChangePassword && (
+    <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 px-4">
+      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 w-full max-w-xs">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-medium text-white">Change password</h3>
+          <button
+            onClick={() => {
+              setShowChangePassword(false)
+              setPasswordError('')
+              setPasswordSuccess('')
+              setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' })
+            }}
+            className="text-zinc-500 hover:text-white transition-colors"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="18" y1="6" x2="6" y2="18"/>
+              <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+
+        <div className="flex flex-col gap-2.5">
+          <div>
+            <label className="text-xs text-zinc-500 mb-1 block">Current password</label>
+            <input
+              type="password"
+              value={passwordForm.currentPassword}
+              onChange={e => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+              className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-violet-500"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-zinc-500 mb-1 block">New password</label>
+            <input
+              type="password"
+              value={passwordForm.newPassword}
+              onChange={e => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+              className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-violet-500"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-zinc-500 mb-1 block">Confirm new password</label>
+            <input
+              type="password"
+              value={passwordForm.confirmPassword}
+              onChange={e => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+              className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-violet-500"
+            />
+          </div>
+
+          {passwordError && (
+            <p className="text-xs text-red-400">{passwordError}</p>
+          )}
+          {passwordSuccess && (
+            <p className="text-xs text-emerald-400">{passwordSuccess}</p>
+          )}
+
+          <div className="flex gap-2 mt-1">
+            <button
+              onClick={() => {
+                setShowChangePassword(false)
+                setPasswordError('')
+                setPasswordSuccess('')
+                setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' })
+              }}
+              className="flex-1 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleChangePassword}
+              className="flex-1 py-2 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-xs font-medium transition-colors"
+            >
+              Save
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )}
 
       {/* Mobile date bar */}
       <div className="lg:hidden border-b border-zinc-800 px-4 py-3 flex items-center justify-between bg-zinc-900">
